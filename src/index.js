@@ -27,15 +27,22 @@ app.use(bodyParser.json({ limit: '2mb' }));
 app.use(bodyParser.urlencoded({ extended: true }));
 
 // Env
-const PORT = Number(process.env.PORT || 3000);
-const HOST = '0.0.0.0';
+// GARANTE QUE ESTAMOS OUVINDO NA PORTA CERTA (Coolify usa PORT)
+const PORT = process.env.PORT || 3000;
 const WA_VERIFY_TOKEN = process.env.WA_VERIFY_TOKEN || '';
 const AGENT_PERSONA = process.env.AGENT_PERSONA || 'Você é um assistente comercial objetivo e claro.';
 
-// Healthcheck (optional extra)
-app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok' });
+// ---- ROUTES FOR READINESS / HEALTH -----------------------------
+// Página raiz (útil pro Traefik / ver no navegador)
+app.get('/', (req, res) => {
+  res.status(200).send('WhatsApp Agent is running ✅');
 });
+
+// Healthcheck simples (útil pro Coolify se quiser configurar)
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok', uptime: process.uptime() });
+});
+// ----------------------------------------------------------------
 
 // Webhook verification endpoint
 app.get('/webhooks/whatsapp', (req, res) => {
@@ -102,23 +109,15 @@ app.post('/webhooks/whatsapp', async (req, res) => {
   }
 });
 
-// Root info
-app.get('/', (req, res) => {
-  res.status(200).json({
-    name: 'agent-whatsapp',
-    version: '0.1.0',
-    status: 'running',
-  });
-});
-
+// (rota raiz já definida acima)
 // Handle unknown routes
 app.use((req, res) => {
   res.status(404).json({ error: 'Not found' });
 });
 
-// Start server
-app.listen(PORT, HOST, () => {
-  console.log(`agent-whatsapp ouvindo em http://${HOST}:${PORT}`);
+// Use 0.0.0.0 para aceitar conexões externas no container
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`agent-whatsapp ouvindo em http://0.0.0.0:${PORT}`);
 });
 
 // Basic process-level error logging
